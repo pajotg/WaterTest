@@ -1,5 +1,6 @@
 #include "Cell2D.hpp"
 #include <cmath>
+#include <thread>
 
 Cell2D::Cell2D() : Cell(), Velocity(), Left(), Right(), Up(), Down() { }
 Cell2D::Cell2D(const Cell2D& From)
@@ -61,6 +62,34 @@ void Cell2D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables,
 	TempSediment = Sediment - GetSedimentForWaterVolume(Variables, (Left.FlowVolume + Right.FlowVolume + Up.FlowVolume + Down.FlowVolume) * Variables.DT)
 		+ LeftCell.GetSedimentForWaterVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForWaterVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
 		+ UpCell.GetSedimentForWaterVolume(Variables, UpCell.Down.FlowVolume * Variables.DT) + DownCell.GetSedimentForWaterVolume(Variables, DownCell.Up.FlowVolume * Variables.DT);
+}
+
+typedef (*CallFunc)(const SimulationVariables& Variables, int i);
+
+struct CallRange
+{
+	const SimulationVariables& Variables;
+	int StartIndex;
+	int EndIndex;
+	CallFunc Func;
+
+	void Run()
+	{
+		for (int i = Data.StartIndex; i < Data.EndIndex; i++)
+			Data.Func(Data.Variables, i);
+	}
+
+	CallRange(const SimulationVariables& Variables, int StartIndex, int EndIndex, CallFunc Func) : Variables(Variables), StartIndex(StartIndex), EndIndex(EndIndex), Func(Func) { }
+}
+
+static void RunThreaded(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY, int NumThreads, CallFunc Func)
+{
+	std::vector<CallRange> Ranges;
+
+	for (int y = 1; y < SizeY - 1; y++)
+		Ranges.push_back(CallRange(Variables, 1 + y * SizeY, SizeX - 1 + y * SizeY, Func));
+
+	// TODO: Spawn threads, make each thread pop one range, stop once no more ranges exist, join all threads
 }
 
 void Cell2D::UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY)
