@@ -6,7 +6,7 @@ OBJ_DIR = obj/
 PREREQ_DIR = prereq/
 INCLUDE_DIRS = include/
 
-CFLAGS = -Wall -Wextra -Werror -std=c++11 -pedantic-errors -DCOMPILE
+CFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic-errors -DCOMPILE
 LDFLAGS = 
 CXX = clang++
 

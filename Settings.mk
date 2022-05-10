@@ -9,6 +9,6 @@ CFLAGS += -fsanitize=address
 CFLAGS += -ferror-limit=2	# usually only the first or second errors are usefull, the rest is just junk
 
 CFLAGS += -Wno-newline-eof
-CFLAGS += -Wno-unused-variable -Wno-unused-function
+CFLAGS += -Wno-unused-variable -Wno-unused-function -Wno-unused-parameter
 
 LDFLAGS += -lglfw -L "/Users/$(USER)/.brew/opt/glfw/lib/" MLX42/libmlx42.a -L MLX42 

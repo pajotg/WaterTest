@@ -1,6 +1,8 @@
 #include "Cell2D.hpp"
 #include <cmath>
 #include <thread>
+#include <vector>
+#include <atomic>
 
 Cell2D::Cell2D() : Cell(), Velocity(), Left(), Right(), Up(), Down() { }
 Cell2D::Cell2D(const Cell2D& From)
@@ -64,46 +66,58 @@ void Cell2D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables,
 		+ UpCell.GetSedimentForWaterVolume(Variables, UpCell.Down.FlowVolume * Variables.DT) + DownCell.GetSedimentForWaterVolume(Variables, DownCell.Up.FlowVolume * Variables.DT);
 }
 
-typedef (*CallFunc)(const SimulationVariables& Variables, int i);
-
+template<class T>
 struct CallRange
 {
-	const SimulationVariables& Variables;
 	int StartIndex;
 	int EndIndex;
-	CallFunc Func;
+	T Func;
 
 	void Run()
 	{
-		for (int i = Data.StartIndex; i < Data.EndIndex; i++)
-			Data.Func(Data.Variables, i);
+		for (int i = StartIndex; i < EndIndex; i++)
+			Func(i);
 	}
 
-	CallRange(const SimulationVariables& Variables, int StartIndex, int EndIndex, CallFunc Func) : Variables(Variables), StartIndex(StartIndex), EndIndex(EndIndex), Func(Func) { }
-}
+	CallRange(int StartIndex, int EndIndex, T Func) : StartIndex(StartIndex), EndIndex(EndIndex), Func(Func) { }
+};
 
-static void RunThreaded(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY, int NumThreads, CallFunc Func)
+#include <iostream>
+template<class T>
+static void RunThreaded(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY, int NumThreads, T Func)
 {
-	std::vector<CallRange> Ranges;
+	std::vector<CallRange<T>> Ranges;
 
 	for (int y = 1; y < SizeY - 1; y++)
-		Ranges.push_back(CallRange(Variables, 1 + y * SizeY, SizeX - 1 + y * SizeY, Func));
+		Ranges.push_back(CallRange<T>(1 + y * SizeY, SizeX - 1 + y * SizeY, Func));
 
-	// TODO: Spawn threads, make each thread pop one range, stop once no more ranges exist, join all threads
+	std::atomic_size_t Current(0);
+
+	std::thread* Threads = new std::thread[NumThreads];
+	for (int i = 0; i < NumThreads; i++)
+		Threads[i] = std::thread([&]() {	// I dont like that i have to use pointers, i'd rather use a reference
+			while (true)
+			{
+				size_t I = Current.fetch_add(1);
+				if (I >= Ranges.size())
+					break;
+
+				Ranges[I].Run();
+			}
+		});
+	
+	for (int i = 0; i < NumThreads; i++)
+		Threads[i].join();
+	delete[] Threads;
 }
 
 void Cell2D::UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY)
 {
-	for (int x = 1; x < SizeX - 1; x++)
-		for (int y = 1; y < SizeY - 1; y++)
-			Ptr[x + y * SizeX].UpdateRainfall(Variables, (std::rand() % 10) == 0 ? Variables.RAINFALL * 10 : 0);
+	// Lambdas are AWESOME!
+	auto RunFunc = [&](auto Lambda) { RunThreaded(Variables, Ptr, SizeX, SizeY, std::thread::hardware_concurrency(), Lambda); };
 
-	for (int x = 1; x < SizeX - 1; x++)
-		for (int y = 1; y < SizeY - 1; y++)
-		{
-			int i = x + y * SizeX;
-			Ptr[i].UpdatePipes(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]);
-		}
+	RunFunc([&](int i) { Ptr[i].UpdateRainfall(Variables, (std::rand() % 10) == 0 ? Variables.RAINFALL * 10 : 0); });
+	RunFunc([&](int i) { Ptr[i].UpdatePipes(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); });
 	
 	// Boundary condition
 	for (int x = 1; x < SizeX - 1; x++)
@@ -116,25 +130,11 @@ void Cell2D::UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int 
 		Ptr[1 + y * SizeX].Up.FlowVolume = 0;
 		Ptr[SizeX - 2 + y * SizeX].Down.FlowVolume = 0;
 	}
-
-	for (int x = 1; x < SizeX - 1; x++)
-		for (int y = 1; y < SizeY - 1; y++)
-		{
-			int i = x + y * SizeX;
-			Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]);
-		}
 	
-	for (int x = 1; x < SizeX - 1; x++)
-		for (int y = 1; y < SizeY - 1; y++)
-			Ptr[x + y * SizeX].FinishWaterSurfaceAndSediment();
-
-	for (int x = 1; x < SizeX - 1; x++)
-		for (int y = 1; y < SizeY - 1; y++)
-		Ptr[x + y * SizeX].UpdateErosionAndDeposition(Variables);
-
-	for (int x = 1; x < SizeX - 1; x++)
-		for (int y = 1; y < SizeY - 1; y++)
-			Ptr[x + y * SizeX].UpdateEvaporation(Variables);
+	RunFunc([&](int i) { Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); });
+	RunFunc([&](int i) { Ptr[i].FinishWaterSurfaceAndSediment(); });
+	RunFunc([&](int i) { Ptr[i].UpdateErosionAndDeposition(Variables); });
+	RunFunc([&](int i) { Ptr[i].UpdateEvaporation(Variables); });
 }
 
 static float clamp(float v, float min, float max)
