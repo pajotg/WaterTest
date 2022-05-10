@@ -9,9 +9,9 @@ struct SimulationVariables {
 	float DT = 0.004f;
 	float GRAVITY = 9.81f;
 	float PIPE_LENGTH = 0.1f;
-	float SEDIMENT_CAPACITY = 1.0f;
-	float DISSOLVE_CONSTANT = 4.0f;
-	float DEPOSITION_CONSTANT = 4.0f;
+	float SEDIMENT_CAPACITY = 0.8f;
+	float DISSOLVE_CONSTANT = 0.5f;
+	float DEPOSITION_CONSTANT = 5.5f;
 };
 
 #endif

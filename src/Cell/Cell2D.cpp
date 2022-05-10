@@ -26,7 +26,8 @@ Cell2D& Cell2D::operator = (const Cell2D& From)
 
 float Cell2D::GetVelocityMagnitude() const
 {
-	return std::sqrt(Velocity.first * Velocity.first + Velocity.second * Velocity.second);
+	//return std::sqrt(Velocity.first * Velocity.first + Velocity.second * Velocity.second);
+	return std::abs(Velocity.first) + std::abs(Velocity.second);
 }
 
 void Cell2D::UpdatePipes(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell)
@@ -57,13 +58,17 @@ void Cell2D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables,
 	VolumeChange *= Variables.DT;
 	
 	TempWaterHeight = WaterHeight + VolumeChange / (Variables.PIPE_LENGTH * Variables.PIPE_LENGTH);
+
+	float SedimentChange = 
+		LeftCell.GetSedimentForWaterVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForWaterVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
+		+ UpCell.GetSedimentForWaterVolume(Variables, UpCell.Down.FlowVolume * Variables.DT) + DownCell.GetSedimentForWaterVolume(Variables, DownCell.Up.FlowVolume * Variables.DT)
+		- GetSedimentForWaterVolume(Variables, (Left.FlowVolume + Right.FlowVolume + Up.FlowVolume + Down.FlowVolume) * Variables.DT);
+
+	TempSediment = Sediment + SedimentChange;
+
 	float VelocityX = (LeftCell.Right.FlowVolume - Left.FlowVolume - RightCell.Left.FlowVolume + Right.FlowVolume) / 2;
 	float VelocityY = (DownCell.Up.FlowVolume - Down.FlowVolume - UpCell.Down.FlowVolume + Up.FlowVolume) / 2;
 	Velocity = std::make_pair(VelocityX, VelocityY);
-
-	TempSediment = Sediment - GetSedimentForWaterVolume(Variables, (Left.FlowVolume + Right.FlowVolume + Up.FlowVolume + Down.FlowVolume) * Variables.DT)
-		+ LeftCell.GetSedimentForWaterVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForWaterVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
-		+ UpCell.GetSedimentForWaterVolume(Variables, UpCell.Down.FlowVolume * Variables.DT) + DownCell.GetSedimentForWaterVolume(Variables, DownCell.Up.FlowVolume * Variables.DT);
 }
 
 template<class T>
@@ -82,7 +87,6 @@ struct CallRange
 	CallRange(int StartIndex, int EndIndex, T Func) : StartIndex(StartIndex), EndIndex(EndIndex), Func(Func) { }
 };
 
-#include <iostream>
 template<class T>
 static void RunThreaded(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY, int NumThreads, T Func)
 {
@@ -132,9 +136,7 @@ void Cell2D::UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int 
 	}
 	
 	RunFunc([&](int i) { Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); });
-	RunFunc([&](int i) { Ptr[i].FinishWaterSurfaceAndSediment(); });
-	RunFunc([&](int i) { Ptr[i].UpdateErosionAndDeposition(Variables); });
-	RunFunc([&](int i) { Ptr[i].UpdateEvaporation(Variables); });
+	RunFunc([&](int i) { Ptr[i].FinishWaterSurfaceAndSediment(); Ptr[i].UpdateErosionAndDeposition(Variables); Ptr[i].UpdateEvaporation(Variables); });
 }
 
 static float clamp(float v, float min, float max)
@@ -154,32 +156,88 @@ static float lerp(float a, float b, float t)
 	return a + (b - a) * t;
 }
 
+static float map(float v, float MinIn, float MaxIn, float MinOut, float MaxOut)
+{
+	float ZeroToOne = (v - MinIn) / (MaxIn - MinIn);
+	return MinOut + ZeroToOne * (MaxOut - MinOut);
+}
+static float sigmoid(float v)
+{
+	return v / (1 + std::abs(v));
+}
+
 static int ToColor(float r, float g, float b)
 {
 	return ToByte(r) << 24 | ToByte(g) << 16 | ToByte(b) << 8 | 255;
 }
 
-void Cell2D::DrawImage(mlx_image_t* img, Cell2D* Ptr, int SizeX, int SizeY, float HeightScale)
+static std::pair<float, float> GetMinMax(Cell2D* Ptr, int SizeX, int SizeY, int StartX, int StartY, int EndX, int EndY)
 {
-	for (int x = 0; x < SizeX; x++)
-		for (int y = 0; y < SizeY; y++)
+	float Min = 100000;
+	float Max = -Min;
+
+	for (int x = StartX; x < EndX; x++)
+		for (int y = StartY; y < EndY; y++)
 		{
 			int i = x + y * SizeX;
 
-			float WaterHeight = Ptr[i].WaterHeight * HeightScale;
-			float TerrainHeight = Ptr[i].TerrainHeight * HeightScale;
-			float SedimentHeight = Ptr[i].Sediment * HeightScale;
+			Min = std::min(Min, Ptr[i].TerrainHeight);
+			Max = std::max(Max, Ptr[i].TerrainHeight);
+		}
+	
+	return std::make_pair(Min, Max);
+}
 
-			float r = Ptr[i].TerrainHeight;
-			float g = Ptr[i].TerrainHeight;
-			float b = Ptr[i].TerrainHeight;
+void Cell2D::DrawImage(const SimulationVariables& Variables, mlx_image_t* img, Cell2D* Ptr, int SizeX, int SizeY, float Min, float Max, int PixelSize, int StartX, int StartY, int EndX, int EndY)
+{
+	if (EndX < 0) EndX += SizeX + 1;
+	if (EndY < 0) EndY += SizeY + 1;
 
-			float WaterPR = clamp(WaterHeight * 5, 0, 1);
-			float SedimentPR = clamp(WaterHeight * 5, 0, 1);
+	if (Min >= Max)
+	{
+		auto MinMax = GetMinMax(Ptr, SizeX, SizeY, StartX, StartY, EndX, EndY);
+		Min = MinMax.first;
+		Max = MinMax.second;
+	}
+
+	//std::cout << "Draw (" << StartX << ", " << StartY << ") (" << EndX << ", " << EndY << ") x " << PixelSize << std::endl;
+
+	for (int x = StartX; x < EndX; x++)
+		for (int y = StartY; y < EndY; y++)
+		{
+			int i = x + y * SizeX;
+
+			float TerrainHeight = map(Ptr[i].TerrainHeight, Min, Max, 0, 1);
+			float SedimentHeight = Ptr[i].Sediment;
+			float WaterHeight = Ptr[i].WaterHeight;
+
+			float r = TerrainHeight;
+			float g = TerrainHeight;
+			float b = TerrainHeight;
+
+			float WaterPR = sigmoid(WaterHeight * 40);
+			float SedimentPR = sigmoid(SedimentHeight * 80);
 			
 			b = lerp(b, 1, WaterPR);
 			g = lerp(g, 1, SedimentPR);
 
-			mlx_put_pixel(img, x, y, ToColor(r, g, b));
+			/*
+			float STC = Ptr[i].GetSedimentTransportCapacity(Variables);
+			r = STC * 4;
+			g = r;
+			b = r;
+			*/
+
+			int Color = ToColor(r, g, b);
+
+			int DrawX = (x - StartX) * PixelSize;
+			int DrawY = (y - StartY) * PixelSize;
+			for (int dx = 0; dx < PixelSize; dx++)
+				for (int dy = 0; dy < PixelSize; dy++)
+				{
+					//if (PixelSize != 1)
+					//	std::cout << "(" << DrawX << ", " << DrawY << ") / (" << dx << ", " << dy << ")" << std::endl;
+					mlx_put_pixel(img, DrawX + dx, DrawY + dy, Color);
+				}
 		}
 }

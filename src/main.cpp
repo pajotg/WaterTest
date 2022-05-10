@@ -53,15 +53,44 @@ struct HookData
 {
 	mlx_t* mlx;
 	mlx_image_t *img;
+	mlx_image_t *zoom_img;
 
-	const SimulationVariables& Variables;
+	SimulationVariables& Variables;
 	Cell2D* Cells;
 
 	const int SIZEX;
 	const int SIZEY;
+	const int ZOOM_SIZE;
+	const int ZOOM_SCALE;
 
-	HookData(mlx_t* mlx, mlx_image_t *img, const SimulationVariables& Variables, Cell2D* Cells, int SIZEX, const int SIZEY) : mlx(mlx), img(img), Variables(Variables), Cells(Cells), SIZEX(SIZEX), SIZEY(SIZEY) { }
+	HookData(mlx_t* mlx, mlx_image_t *img, mlx_image_t *zoom_img, SimulationVariables& Variables, Cell2D* Cells, int SIZEX, const int SIZEY, int ZOOM_SIZE, int ZOOM_SCALE) : mlx(mlx), img(img), zoom_img(zoom_img), Variables(Variables), Cells(Cells), SIZEX(SIZEX), SIZEY(SIZEY), ZOOM_SIZE(ZOOM_SIZE), ZOOM_SCALE(ZOOM_SCALE) { }
 };
+
+template<class T>
+void Apply(Cell2D* Cells, int SizeX, int SizeY, int x, int y, int Range, T ApplyFunc)
+{
+	int LowX = std::max(x - Range, 0);
+	int HighX = std::min(x + Range, SizeX);
+	int LowY = std::max(y - Range, 0);
+	int HighY = std::min(y + Range, SizeY);
+
+	float MaxSqrDist = Range * Range;
+
+	for (int ix = LowX; ix < HighX; ix++)
+		for (int iy = LowY; iy < HighY; iy++)
+		{
+			float OX = ix - x;
+			float OY = iy - y;
+
+			float SqrDist = OX * OX + OY * OY;
+
+			float Strength = 1 - (SqrDist / MaxSqrDist);
+			if (Strength < 0)
+				continue;
+
+			ApplyFunc(Cells[ix + iy * SizeX], Strength);
+		}
+}
 
 static void	hook(void *param)
 {
@@ -69,19 +98,78 @@ static void	hook(void *param)
 
 	if (mlx_is_key_down(data->mlx, MLX_KEY_ESCAPE))
 		mlx_close_window(data->mlx);
+	
+	if (mlx_is_key_down(data->mlx, MLX_KEY_DOWN))
+		data->Variables.RAINFALL /= 1.1f;
+	if (mlx_is_key_down(data->mlx, MLX_KEY_UP))
+	{
+		if (data->Variables.RAINFALL <= 0)
+			data->Variables.RAINFALL = 0.0000001f;
+		data->Variables.RAINFALL *= 1.1f;
+	}
+
+	int32_t x, y;
+	mlx_get_mouse_pos(data->mlx, &x, &y);
+	if (x >= 0 && y >= 0 && x < data->SIZEX && y < data->SIZEY)
+	{
+		int Range = 5;
+		if (mlx_is_key_down(data->mlx, MLX_KEY_1))
+			Range *= 5;
+		if (mlx_is_key_down(data->mlx, MLX_KEY_2))
+			Range *= 25;
+		if (mlx_is_key_down(data->mlx, MLX_KEY_3))
+			Range *= 50;
+		if (mlx_is_key_down(data->mlx, MLX_KEY_4))
+			Range *= 100;
+
+		if (mlx_is_key_down(data->mlx, MLX_KEY_Q)) {
+			float TargetHeight = data->Cells[x + y * data->SIZEX].TerrainHeight;
+
+			Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [TargetHeight](Cell2D& Cell, float Strength) { Cell.TerrainHeight += (TargetHeight - Cell.TerrainHeight) * Strength; });
+		} else if (mlx_is_key_down(data->mlx, MLX_KEY_SPACE)) {
+			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_LEFT))
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.TerrainHeight += Strength / 50; });
+			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_RIGHT))
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.TerrainHeight -= Strength / 50; });
+		} else if (mlx_is_key_down(data->mlx, MLX_KEY_W)) {
+			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_LEFT))
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.Sediment += Strength / 50; });
+			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_RIGHT))
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.Sediment *= 1 - Strength; });
+		} else {
+			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_LEFT))
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.WaterHeight += Strength / 50; });
+			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_RIGHT))
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.WaterHeight *= 1 - Strength; });
+		}
+	}
 
 	Cell2D::UpdateCells(data->Variables, data->Cells, data->SIZEX, data->SIZEY);
-	Cell2D::DrawImage(data->img, data->Cells, data->SIZEX, data->SIZEY, 1);
+	Cell2D::DrawImage(data->Variables, data->img, data->Cells, data->SIZEX, data->SIZEY);
+
+	if (x >= 0 && y >= 0 && x < data->SIZEX && y < data->SIZEY)
+	{
+		int lx = std::max(0, x - data->ZOOM_SIZE / 2);
+		int ly = std::max(0, y - data->ZOOM_SIZE / 2);
+		int hx = std::min(data->SIZEX, lx + data->ZOOM_SIZE);
+		int hy = std::min(data->SIZEY, ly + data->ZOOM_SIZE);
+		Cell2D::DrawImage(data->Variables, data->zoom_img, data->Cells, data->SIZEX, data->SIZEY, 0, -1, data->ZOOM_SCALE, lx, ly, hx, hy);
+	}
+
+
 	
 	//for (unsigned int x = 0; x < data->img->width; x++)
 	//	for(unsigned int y= 0; y < data->img->height; y++)
 	//		mlx_put_pixel(data->img, x, y, rand() % RAND_MAX);
 }
 
-void DoCell2DTest(const SimulationVariables& Variables)
+void DoCell2DTest(SimulationVariables& Variables)
 {
 	const int SIZEX = 512;
 	const int SIZEY = 512;
+	const int ZOOM_SIZE = 32;
+	const int ZOOM_SCALE = 8;
+
 	Cell2D* Cells = new Cell2D[SIZEX * SIZEY];
 
 	float CenterX = SIZEX / 2.0f;
@@ -108,14 +196,18 @@ void DoCell2DTest(const SimulationVariables& Variables)
 
 	//Cells[SIZEX / 2 + SIZEY / 2 * SIZEX].WaterHeight = 1;
 
-	mlx_t* mlx = mlx_init(SIZEX, SIZEY, "Water sim", false);
+	mlx_t* mlx = mlx_init(SIZEX + ZOOM_SIZE * ZOOM_SCALE, SIZEY, "Water sim", false);
 	if (!mlx)
 		exit(EXIT_FAILURE);
 	mlx_image_t *img = mlx_new_image(mlx, SIZEX, SIZEY);
+	mlx_image_t *zoom_img = mlx_new_image(mlx, ZOOM_SIZE * ZOOM_SCALE, ZOOM_SIZE * ZOOM_SCALE);
 	memset(img->pixels, 255, img->width * img->height * sizeof(int));
-	mlx_image_to_window(mlx, img, 0, 0);
+	memset(zoom_img->pixels, 255, zoom_img->width * zoom_img->height * sizeof(int));
 
-	HookData Data(mlx, img, Variables, Cells, SIZEX, SIZEY);
+	mlx_image_to_window(mlx, img, 0, 0);
+	mlx_image_to_window(mlx, zoom_img, img->width, 0);
+
+	HookData Data(mlx, img, zoom_img, Variables, Cells, SIZEX, SIZEY, ZOOM_SIZE, ZOOM_SCALE);
 	mlx_loop_hook(mlx, &hook, &Data);
 	mlx_loop(mlx);
 	mlx_terminate(mlx);
@@ -129,5 +221,6 @@ int main()
 	//DoCell1DTest(Variables);
 
 	Variables.DT /= 2;
+	Variables.RAINFALL /= 20;
 	DoCell2DTest(Variables);
 }

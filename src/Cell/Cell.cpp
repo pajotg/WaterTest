@@ -21,13 +21,17 @@ Cell& Cell::operator = (const Cell& From)
 	return *this;
 }
 
-float Cell::GetCombinedHeight() const { return TerrainHeight + WaterHeight + Sediment; }
+float Cell::GetCombinedHeight() const { return TerrainHeight + WaterHeight; }
 float Cell::GetSedimentTransportCapacity(const SimulationVariables& Variables) const { return Variables.SEDIMENT_CAPACITY * GetVelocityMagnitude(); }	// Note: This does not take into account the local tilt angle, should be multiplied by sin(angle)
 float Cell::GetSedimentForWaterVolume(const SimulationVariables& Variables, float WaterVolume) {
-	float GetPR = WaterVolume / (WaterHeight * Variables.PIPE_LENGTH * Variables.PIPE_LENGTH);
-
-	if (std::isnan(GetPR) || std::isinf(GetPR))	// Can't check for WaterHeight <= 0, Cause WaterHeight * PIPE_LENGTH * PIPE_LENGTH may still be 0 due to rounding
+	float CurrentWaterVolume = WaterHeight * Variables.PIPE_LENGTH * Variables.PIPE_LENGTH;
+	if (CurrentWaterVolume <= 0)
 		return 0;
+
+	float GetPR = WaterVolume / CurrentWaterVolume;
+
+	//if (std::isnan(GetPR) || std::isinf(GetPR))	// Can't check for WaterHeight <= 0, Cause WaterHeight * PIPE_LENGTH * PIPE_LENGTH may still be 0 due to rounding
+	//	return 0;
 
 	return GetPR * Sediment;
 }
@@ -60,4 +64,8 @@ void Cell::UpdateErosionAndDeposition(const SimulationVariables& Variables)
 void Cell::UpdateEvaporation(const SimulationVariables& Variables)
 {
 	WaterHeight *= 1 - Variables.EVAPORATION * Variables.DT;
+	//float RemovedSediment = Sediment * Variables.EVAPORATION * Variables.DT;
+
+	//Sediment -= RemovedSediment;
+	//TerrainHeight += RemovedSediment;
 }
