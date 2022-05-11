@@ -78,6 +78,8 @@ void Cell1D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables,
 	// Now for the sediment
 	TempSediment = Sediment - GetSedimentForWaterVolume(Variables, (Left.FlowVolume + Right.FlowVolume) * Variables.DT)
 		+ LeftCell.GetSedimentForWaterVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForWaterVolume(Variables, RightCell.Left.FlowVolume * Variables.DT);
+
+	TempTerrainHeight = TerrainHeight;	// No steepness function
 }
 
 /*

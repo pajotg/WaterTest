@@ -22,6 +22,7 @@ class Cell {
 		Cell& operator = (const Cell& From);
 
 		virtual float GetVelocityMagnitude() const = 0;
+		float GetHeightChange(const SimulationVariables& Variables, const Cell& Other) const;
 		float GetCombinedHeight() const;
 		float GetSedimentTransportCapacity(const SimulationVariables& Variables) const;
 
@@ -35,6 +36,7 @@ class Cell {
 
 		void UpdateEvaporation(const SimulationVariables& Variables);
 	protected:
+		float TempTerrainHeight;
 		float TempWaterHeight;
 		float TempSediment;
 		

@@ -71,6 +71,12 @@ void Cell2D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables,
 	Velocity = std::make_pair(VelocityX, VelocityY);
 }
 
+void Cell2D::UpdateSteepness(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell)
+{
+	float Change = (GetHeightChange(Variables, LeftCell) + GetHeightChange(Variables, RightCell) + GetHeightChange(Variables, UpCell) + GetHeightChange(Variables, DownCell)) / 4;
+	TempTerrainHeight = TerrainHeight + Change;
+}
+
 template<class T>
 struct CallRange
 {
@@ -135,7 +141,7 @@ void Cell2D::UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int 
 		Ptr[SizeX - 2 + y * SizeX].Down.FlowVolume = 0;
 	}
 	
-	RunFunc([&](int i) { Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); });
+	RunFunc([&](int i) { Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); Ptr[i].UpdateSteepness(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); });
 	RunFunc([&](int i) { Ptr[i].FinishWaterSurfaceAndSediment(); Ptr[i].UpdateErosionAndDeposition(Variables); Ptr[i].UpdateEvaporation(Variables); });
 }
 

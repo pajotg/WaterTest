@@ -2,6 +2,7 @@
 #define SIMULATIONVARIABLES_HPP
 
 #include <ostream>
+#include <cmath>
 
 struct SimulationVariables {
 	float RAINFALL = 0.2f;
@@ -12,6 +13,7 @@ struct SimulationVariables {
 	float SEDIMENT_CAPACITY = 0.8f;
 	float DISSOLVE_CONSTANT = 0.5f;
 	float DEPOSITION_CONSTANT = 5.5f;
+	float MAX_STEP = std::tan(70 * M_PI / 180) * PIPE_LENGTH;
 };
 
 #endif

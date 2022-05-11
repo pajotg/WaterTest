@@ -21,6 +21,15 @@ Cell& Cell::operator = (const Cell& From)
 	return *this;
 }
 
+float Cell::GetHeightChange(const SimulationVariables& Variables, const Cell& Other) const {
+	float Diff = TerrainHeight - Other.TerrainHeight;
+	if (Diff > Variables.MAX_STEP)
+		return (Variables.MAX_STEP - Diff) / 2;
+	else if (Diff < -Variables.MAX_STEP)
+		return (- Variables.MAX_STEP - Diff) / 2;
+	return 0;
+}
+
 float Cell::GetCombinedHeight() const { return TerrainHeight + WaterHeight; }
 float Cell::GetSedimentTransportCapacity(const SimulationVariables& Variables) const { return Variables.SEDIMENT_CAPACITY * GetVelocityMagnitude(); }	// Note: This does not take into account the local tilt angle, should be multiplied by sin(angle)
 float Cell::GetSedimentForWaterVolume(const SimulationVariables& Variables, float WaterVolume) {
@@ -46,6 +55,7 @@ void Cell::FinishWaterSurfaceAndSediment()
 	// Is max really needed?
 	WaterHeight = std::max(TempWaterHeight, 0.0f);
 	Sediment = std::max(TempSediment, 0.0f);
+	TerrainHeight = TempTerrainHeight;
 }
 
 void Cell::UpdateErosionAndDeposition(const SimulationVariables& Variables)

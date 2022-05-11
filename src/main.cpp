@@ -218,6 +218,13 @@ int main()
 	std::srand(0);
 
 	SimulationVariables Variables;
+
+	/*
+	std::cout << "MaxStep: " << Variables.MAX_STEP << std::endl;
+	std::cout << "Aka: " << std::atan(Variables.MAX_STEP / Variables.PIPE_LENGTH) << " radians" << std::endl;
+	std::cout << "Aka: " << std::atan(Variables.MAX_STEP / Variables.PIPE_LENGTH) / M_PI * 180 << " degrees" << std::endl;
+	*/
+
 	//DoCell1DTest(Variables);
 
 	Variables.DT /= 2;
