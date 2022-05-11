@@ -47,7 +47,8 @@ float Cell::GetSedimentForWaterVolume(const SimulationVariables& Variables, floa
 
 void Cell::UpdateRainfall(const SimulationVariables& Variables, float Rainfall)
 {
-	WaterHeight += Rainfall * Variables.DT;
+	if ((std::rand() % Variables.RainRandom) == 0)
+		WaterHeight += Rainfall * Variables.RainRandom * Variables.DT;
 }
 
 void Cell::FinishWaterSurfaceAndSediment()

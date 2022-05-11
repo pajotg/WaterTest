@@ -132,13 +132,13 @@ void Cell2D::UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int 
 	// Boundary condition
 	for (int x = 1; x < SizeX - 1; x++)
 	{
-		Ptr[x + 1 * SizeX].Left.FlowVolume = 0;
-		Ptr[x + (SizeY - 2) * SizeX].Right.FlowVolume = 0;
+		Ptr[x + 1 * SizeX].Up.FlowVolume = 0;
+		Ptr[x + (SizeY - 2) * SizeX].Down.FlowVolume = 0;
 	}
 	for (int y = 1; y < SizeY - 1; y++)
 	{
-		Ptr[1 + y * SizeX].Up.FlowVolume = 0;
-		Ptr[SizeX - 2 + y * SizeX].Down.FlowVolume = 0;
+		Ptr[1 + y * SizeX].Left.FlowVolume = 0;
+		Ptr[SizeX - 2 + y * SizeX].Right.FlowVolume = 0;
 	}
 	
 	RunFunc([&](int i) { Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); Ptr[i].UpdateSteepness(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); });
@@ -201,9 +201,11 @@ void Cell2D::DrawImage(const SimulationVariables& Variables, mlx_image_t* img, C
 
 	if (Min >= Max)
 	{
+		float MinSize = Min - Max;
+
 		auto MinMax = GetMinMax(Ptr, SizeX, SizeY, StartX, StartY, EndX, EndY);
 		Min = MinMax.first;
-		Max = MinMax.second;
+		Max = std::max(Min + MinSize, MinMax.second);
 	}
 
 	//std::cout << "Draw (" << StartX << ", " << StartY << ") (" << EndX << ", " << EndY << ") x " << PixelSize << std::endl;
@@ -221,11 +223,16 @@ void Cell2D::DrawImage(const SimulationVariables& Variables, mlx_image_t* img, C
 			float g = TerrainHeight;
 			float b = TerrainHeight;
 
-			float WaterPR = sigmoid(WaterHeight * 40);
-			float SedimentPR = sigmoid(SedimentHeight * 80);
+			float WaterPR = sigmoid(WaterHeight * 3);
+			float SedimentPR = sigmoid(SedimentHeight * 3);
 			
+			r = lerp(r, 0, WaterPR);
+			g = lerp(g, 0, WaterPR);
 			b = lerp(b, 1, WaterPR);
+
+			r = lerp(r, 0, SedimentPR);
 			g = lerp(g, 1, SedimentPR);
+			b = lerp(b, 1, SedimentPR);
 
 			/*
 			float STC = Ptr[i].GetSedimentTransportCapacity(Variables);
