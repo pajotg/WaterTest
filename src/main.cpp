@@ -174,8 +174,8 @@ static void	hook(void *param)
 
 void DoCell2DTest(SimulationVariables& Variables)
 {
-	const int SIZEX = 512;
-	const int SIZEY = 512;
+	const int SIZEX = 256;
+	const int SIZEY = 256;
 	const int ZOOM_SIZE = 32;
 	const int ZOOM_SCALE = 8;
 

@@ -42,7 +42,7 @@ void Cell2D::UpdatePipes(const SimulationVariables& Variables, Cell2D& LeftCell,
 
 	float CurrentVolume = WaterHeight * Variables.PIPE_LENGTH * Variables.PIPE_LENGTH;
 	float K = std::min(1.0f, CurrentVolume / (Total * Variables.DT));
-	if (std::isinf(K))
+	if (std::isinf(K) || std::isnan(K))
 		K = 0;
 
 	Left.ScaleBack(K);
@@ -53,18 +53,15 @@ void Cell2D::UpdatePipes(const SimulationVariables& Variables, Cell2D& LeftCell,
 
 void Cell2D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell)
 {
-	float VolumeChange = LeftCell.Right.FlowVolume + RightCell.Left.FlowVolume + DownCell.Up.FlowVolume + UpCell.Down.FlowVolume
-						- Left.FlowVolume - Right.FlowVolume - Up.FlowVolume - Down.FlowVolume;
-	VolumeChange *= Variables.DT;
-	
-	TempWaterHeight = WaterHeight + VolumeChange / (Variables.PIPE_LENGTH * Variables.PIPE_LENGTH);
-
-	float SedimentChange = 
-		LeftCell.GetSedimentForWaterVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForWaterVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
-		+ UpCell.GetSedimentForWaterVolume(Variables, UpCell.Down.FlowVolume * Variables.DT) + DownCell.GetSedimentForWaterVolume(Variables, DownCell.Up.FlowVolume * Variables.DT)
-		- GetSedimentForWaterVolume(Variables, (Left.FlowVolume + Right.FlowVolume + Up.FlowVolume + Down.FlowVolume) * Variables.DT);
-
-	TempSediment = Sediment + SedimentChange;
+	TempWaterHeight = WaterHeight
+		+ LeftCell.GetWaterForVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetWaterForVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
+		+ UpCell.GetWaterForVolume(Variables, UpCell.Down.FlowVolume * Variables.DT) + DownCell.GetWaterForVolume(Variables, DownCell.Up.FlowVolume * Variables.DT)
+		- GetWaterForVolume(Variables, (Left.FlowVolume + Right.FlowVolume + Up.FlowVolume + Down.FlowVolume) * Variables.DT);
+		
+	TempSediment = Sediment
+		+ LeftCell.GetSedimentForVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
+		+ UpCell.GetSedimentForVolume(Variables, UpCell.Down.FlowVolume * Variables.DT) + DownCell.GetSedimentForVolume(Variables, DownCell.Up.FlowVolume * Variables.DT)
+		- GetSedimentForVolume(Variables, (Left.FlowVolume + Right.FlowVolume + Up.FlowVolume + Down.FlowVolume) * Variables.DT);
 
 	float VelocityX = (LeftCell.Right.FlowVolume - Left.FlowVolume - RightCell.Left.FlowVolume + Right.FlowVolume) / 2;
 	float VelocityY = (DownCell.Up.FlowVolume - Down.FlowVolume - UpCell.Down.FlowVolume + Up.FlowVolume) / 2;

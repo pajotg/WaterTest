@@ -68,16 +68,16 @@ void Cell1D::UpdateWaterSurface(const SimulationVariables& Variables, Cell1D& Le
 
 void Cell1D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables, Cell1D& LeftCell, Cell1D& RightCell)
 {
-	float VolumeChange = LeftCell.Right.FlowVolume + RightCell.Left.FlowVolume
-						- Left.FlowVolume - Right.FlowVolume;
-	VolumeChange *= Variables.DT;
-	
-	TempWaterHeight = WaterHeight + VolumeChange / (Variables.PIPE_LENGTH * Variables.PIPE_LENGTH);
-	Velocity = (LeftCell.Right.FlowVolume - Left.FlowVolume - RightCell.Left.FlowVolume + Right.FlowVolume) / 2;
+	TempWaterHeight = WaterHeight 
+		+ LeftCell.GetWaterForVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetWaterForVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
+		- GetWaterForVolume(Variables, (Left.FlowVolume + Right.FlowVolume) * Variables.DT);
 
 	// Now for the sediment
-	TempSediment = Sediment - GetSedimentForWaterVolume(Variables, (Left.FlowVolume + Right.FlowVolume) * Variables.DT)
-		+ LeftCell.GetSedimentForWaterVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForWaterVolume(Variables, RightCell.Left.FlowVolume * Variables.DT);
+	TempSediment = Sediment
+		+ LeftCell.GetSedimentForVolume(Variables, LeftCell.Right.FlowVolume * Variables.DT) + RightCell.GetSedimentForVolume(Variables, RightCell.Left.FlowVolume * Variables.DT)
+		- GetSedimentForVolume(Variables, (Left.FlowVolume + Right.FlowVolume) * Variables.DT);
+
+	Velocity = (LeftCell.Right.FlowVolume - Left.FlowVolume - RightCell.Left.FlowVolume + Right.FlowVolume) / 2;
 
 	TempTerrainHeight = TerrainHeight;	// No steepness function
 }

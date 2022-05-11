@@ -23,10 +23,13 @@ class Cell {
 
 		virtual float GetVelocityMagnitude() const = 0;
 		float GetHeightChange(const SimulationVariables& Variables, const Cell& Other) const;
+		float GetLiquidHeight() const;
 		float GetCombinedHeight() const;
 		float GetSedimentTransportCapacity(const SimulationVariables& Variables) const;
 
-		float GetSedimentForWaterVolume(const SimulationVariables& Variables, float WaterVolume);
+		float GetVolumePR(const SimulationVariables& Variables, float Volume);
+		float GetWaterForVolume(const SimulationVariables& Variables, float Volume);
+		float GetSedimentForVolume(const SimulationVariables& Variables, float Volume);
 
 		void UpdateRainfall(const SimulationVariables& Variables, float Rainfall);
 

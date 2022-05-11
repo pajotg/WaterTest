@@ -30,19 +30,26 @@ float Cell::GetHeightChange(const SimulationVariables& Variables, const Cell& Ot
 	return 0;
 }
 
-float Cell::GetCombinedHeight() const { return TerrainHeight + WaterHeight; }
+//float Cell::GetLiquidHeight() const { return WaterHeight; }	// How its in the paper
+float Cell::GetLiquidHeight() const { return WaterHeight + Sediment; }	// My modification (I had waves of sediment moving upstream, makes no sense, the reason i thought it occurred was that the velocity at the wave tip went down, sediment deposited, the height increased, and then gravity moves it forward again, This change makes it so that depositing sediment does NOT increase the height, thus no weird upstream waves, Try increasing DEPOSITION_CONSTANT to 10 and SEDIMENT_CAPACITY to 0.15, and use the original GetLiquidHeight() for the effect)
+
+float Cell::GetCombinedHeight() const { return TerrainHeight + GetLiquidHeight(); }
 float Cell::GetSedimentTransportCapacity(const SimulationVariables& Variables) const { return Variables.SEDIMENT_CAPACITY * GetVelocityMagnitude(); }	// Note: This does not take into account the local tilt angle, should be multiplied by sin(angle)
-float Cell::GetSedimentForWaterVolume(const SimulationVariables& Variables, float WaterVolume) {
-	float CurrentWaterVolume = WaterHeight * Variables.PIPE_LENGTH * Variables.PIPE_LENGTH;
+
+float Cell::GetVolumePR(const SimulationVariables& Variables, float Volume)
+{
+	float CurrentWaterVolume = GetLiquidHeight() * Variables.PIPE_LENGTH * Variables.PIPE_LENGTH;
 	if (CurrentWaterVolume <= 0)
 		return 0;
 
-	float GetPR = WaterVolume / CurrentWaterVolume;
-
-	//if (std::isnan(GetPR) || std::isinf(GetPR))	// Can't check for WaterHeight <= 0, Cause WaterHeight * PIPE_LENGTH * PIPE_LENGTH may still be 0 due to rounding
-	//	return 0;
-
-	return GetPR * Sediment;
+	return Volume / CurrentWaterVolume;
+}
+float Cell::GetWaterForVolume(const SimulationVariables& Variables, float Volume)
+{
+	return GetVolumePR(Variables, Volume) * WaterHeight;
+}
+float Cell::GetSedimentForVolume(const SimulationVariables& Variables, float Volume) {
+	return GetVolumePR(Variables, Volume) * Sediment;
 }
 
 void Cell::UpdateRainfall(const SimulationVariables& Variables, float Rainfall)
