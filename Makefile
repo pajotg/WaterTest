@@ -28,6 +28,7 @@ sinclude $(PREREQS)
 
 $(NAME): $(OBJECTS) Makefile Settings.mk | $(OBJ_DIR)
 	@echo "Making $@"
+	$(MAKE) -C MLX42
 	$(CXX) $(CFLAGS) -o $@ $(OBJECTS) $(LDFLAGS)
 
 $(OBJECTS): Makefile Settings.mk | $(SRC_DIR) $(OBJ_DIR)
