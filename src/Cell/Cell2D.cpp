@@ -40,7 +40,7 @@ void Cell2D::UpdatePipes(const SimulationVariables& Variables, Cell2D& LeftCell,
 
 	float Total = Left.FlowVolume + Right.FlowVolume + Up.FlowVolume + Down.FlowVolume;
 
-	float CurrentVolume = WaterHeight * Variables.PIPE_LENGTH * Variables.PIPE_LENGTH;
+	float CurrentVolume = GetLiquidHeight() * Variables.PIPE_LENGTH * Variables.PIPE_LENGTH;
 	float K = std::min(1.0f, CurrentVolume / (Total * Variables.DT));
 	if (std::isinf(K) || std::isnan(K))
 		K = 0;
