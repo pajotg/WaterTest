@@ -68,9 +68,13 @@ void Cell2D::UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables,
 	Velocity = std::make_pair(VelocityX, VelocityY);
 }
 
-void Cell2D::UpdateSteepness(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell)
+static const float DiagonalMultiplier = sqrt(2);
+void Cell2D::UpdateSteepness(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell, Cell2D& UpLeftCell, Cell2D& UpRightCell, Cell2D& DownLeftCell, Cell2D& DownRightCell)
 {
-	float Change = (GetHeightChange(Variables, LeftCell) + GetHeightChange(Variables, RightCell) + GetHeightChange(Variables, UpCell) + GetHeightChange(Variables, DownCell)) / 4;
+	float SqrDist = Variables.PIPE_LENGTH * DiagonalMultiplier;
+
+	float Change = (GetHeightChange(Variables, LeftCell, Variables.PIPE_LENGTH) + GetHeightChange(Variables, RightCell, Variables.PIPE_LENGTH) + GetHeightChange(Variables, UpCell, Variables.PIPE_LENGTH) + GetHeightChange(Variables, DownCell, Variables.PIPE_LENGTH)
+	+ GetHeightChange(Variables, UpLeftCell, SqrDist) + GetHeightChange(Variables, UpRightCell, SqrDist) + GetHeightChange(Variables, DownLeftCell, SqrDist) + GetHeightChange(Variables, DownRightCell, SqrDist)) / 8;
 	TempTerrainHeight = TerrainHeight + Change;
 }
 
@@ -138,8 +142,15 @@ void Cell2D::UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int 
 		Ptr[SizeX - 2 + y * SizeX].Right.FlowVolume = 0;
 	}
 	
-	RunFunc([&](int i) { Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); Ptr[i].UpdateSteepness(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]); });
-	RunFunc([&](int i) { Ptr[i].FinishWaterSurfaceAndSediment(); Ptr[i].UpdateErosionAndDeposition(Variables); Ptr[i].UpdateEvaporation(Variables); });
+	RunFunc([&](int i) {
+		Ptr[i].UpdateWaterSurfaceAndSediment(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX]);
+		Ptr[i].UpdateSteepness(Variables, Ptr[i - 1], Ptr[i + 1], Ptr[i - SizeX], Ptr[i + SizeX], Ptr[i - 1 - SizeX], Ptr[i + 1 - SizeX], Ptr[i - 1 + SizeX], Ptr[i + 1 + SizeX]);
+	});
+	RunFunc([&](int i) {
+		Ptr[i].FinishWaterSurfaceAndSediment();
+		Ptr[i].UpdateErosionAndDeposition(Variables);
+		Ptr[i].UpdateEvaporation(Variables);
+	});
 }
 
 static float clamp(float v, float min, float max)
@@ -220,8 +231,8 @@ void Cell2D::DrawImage(const SimulationVariables& Variables, mlx_image_t* img, C
 			float g = TerrainHeight;
 			float b = TerrainHeight;
 
-			float WaterPR = sigmoid(WaterHeight * 3);
-			float SedimentPR = sigmoid(SedimentHeight * 3);
+			float WaterPR = sigmoid(WaterHeight);
+			float SedimentPR = sigmoid(SedimentHeight);
 			
 			r = lerp(r, 0, WaterPR);
 			g = lerp(g, 0, WaterPR);

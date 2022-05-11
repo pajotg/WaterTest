@@ -28,7 +28,7 @@ class Cell2D : public Cell {
 
 		void UpdatePipes(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell);
 		void UpdateWaterSurfaceAndSediment(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell);
-		void UpdateSteepness(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell);
+		void UpdateSteepness(const SimulationVariables& Variables, Cell2D& LeftCell, Cell2D& RightCell, Cell2D& UpCell, Cell2D& DownCell, Cell2D& UpLeftCell, Cell2D& UpRightCell, Cell2D& DownLeftCell, Cell2D& DownRightCell);
 
 		static void UpdateCells(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY);
 		static void DrawImage(const SimulationVariables& Variables, mlx_image_t* img, Cell2D* Ptr, int SizeX, int SizeY, float Min = 0, float Max = -1, int PixelSize = 1, int StartX = 0, int StartY = 0, int EndX = -1, int EndY = -1);

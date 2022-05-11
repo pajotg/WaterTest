@@ -22,7 +22,7 @@ class Cell {
 		Cell& operator = (const Cell& From);
 
 		virtual float GetVelocityMagnitude() const = 0;
-		float GetHeightChange(const SimulationVariables& Variables, const Cell& Other) const;
+		float GetHeightChange(const SimulationVariables& Variables, const Cell& Other, float Distance) const;
 		float GetLiquidHeight() const;
 		float GetCombinedHeight() const;
 		float GetSedimentTransportCapacity(const SimulationVariables& Variables) const;

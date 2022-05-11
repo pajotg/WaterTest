@@ -21,12 +21,14 @@ Cell& Cell::operator = (const Cell& From)
 	return *this;
 }
 
-float Cell::GetHeightChange(const SimulationVariables& Variables, const Cell& Other) const {
+float Cell::GetHeightChange(const SimulationVariables& Variables, const Cell& Other, float Distance) const {
 	float Diff = TerrainHeight - Other.TerrainHeight;
-	if (Diff > Variables.MAX_STEP)
-		return (Variables.MAX_STEP - Diff) / 2;
-	else if (Diff < -Variables.MAX_STEP)
-		return (- Variables.MAX_STEP - Diff) / 2;
+	float Step = Variables.MAX_STEP * Distance;
+
+	if (Diff > Step)
+		return (Step - Diff) / 2;
+	else if (Diff < -Step)
+		return (- Step - Diff) / 2;
 	return 0;
 }
 

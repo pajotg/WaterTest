@@ -121,35 +121,35 @@ static void	hook(void *param)
 	mlx_get_mouse_pos(data->mlx, &x, &y);
 	if (x >= 0 && y >= 0 && x < data->SIZEX && y < data->SIZEY)
 	{
+		float StrengthMult = 1;
+		if (mlx_is_key_down(data->mlx, MLX_KEY_LEFT_SHIFT))
+			StrengthMult *= 5;
+
 		int Range = 5;
-		if (mlx_is_key_down(data->mlx, MLX_KEY_1))
-			Range *= 5;
-		if (mlx_is_key_down(data->mlx, MLX_KEY_2))
-			Range *= 25;
-		if (mlx_is_key_down(data->mlx, MLX_KEY_3))
-			Range *= 50;
-		if (mlx_is_key_down(data->mlx, MLX_KEY_4))
-			Range *= 100;
+		for (keys_t Curr = MLX_KEY_1; Curr <= MLX_KEY_9; Curr = (keys_t)(((int)Curr) + 1))
+			if (mlx_is_key_down(data->mlx, Curr))
+				Range *= (Curr - MLX_KEY_1) + 2;
+
 
 		if (mlx_is_key_down(data->mlx, MLX_KEY_Q)) {
 			float TargetHeight = data->Cells[x + y * data->SIZEX].TerrainHeight;
 
-			Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [TargetHeight](Cell2D& Cell, float Strength) { Cell.TerrainHeight += (TargetHeight - Cell.TerrainHeight) * Strength; });
+			Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [&](Cell2D& Cell, float Strength) { Cell.TerrainHeight += (TargetHeight - Cell.TerrainHeight) * Strength; });
 		} else if (mlx_is_key_down(data->mlx, MLX_KEY_SPACE)) {
 			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_LEFT))
-				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.TerrainHeight += Strength / 5; });
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [&](Cell2D& Cell, float Strength) { Cell.TerrainHeight += Strength / 5 * StrengthMult; });
 			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_RIGHT))
-				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.TerrainHeight -= Strength / 5; });
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [&](Cell2D& Cell, float Strength) { Cell.TerrainHeight -= Strength / 5 * StrengthMult; });
 		} else if (mlx_is_key_down(data->mlx, MLX_KEY_W)) {
 			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_LEFT))
-				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.Sediment += Strength / 5; });
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [&](Cell2D& Cell, float Strength) { Cell.Sediment += Strength / 5 * StrengthMult; });
 			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_RIGHT))
-				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.Sediment *= 1 - Strength; });
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [&](Cell2D& Cell, float Strength) { Cell.Sediment *= 1 - Strength; });
 		} else {
 			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_LEFT))
-				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.WaterHeight += Strength / 5; });
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [&](Cell2D& Cell, float Strength) { Cell.WaterHeight += Strength / 5 * StrengthMult; });
 			if (mlx_is_mouse_down(data->mlx, MLX_MOUSE_BUTTON_RIGHT))
-				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [](Cell2D& Cell, float Strength) { Cell.WaterHeight *= 1 - Strength; });
+				Apply(data->Cells, data->SIZEX, data->SIZEY, x, y, Range, [&](Cell2D& Cell, float Strength) { Cell.WaterHeight *= 1 - Strength; });
 		}
 	}
 
