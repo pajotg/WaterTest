@@ -1,0 +1,17 @@
+[package]
+name = "water_test"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "dylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+
+[dependencies]
+crossbeam = "0.8.1"
+num_cpus = "0.2"
