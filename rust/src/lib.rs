@@ -21,6 +21,7 @@
 use crossbeam::scope;
 use crossbeam::deque::{Steal, Worker};
 
+#[repr(C)]
 pub struct SimulationVariables {
 	pub thread_count : usize,
 	pub rainfall : f32,
@@ -113,8 +114,7 @@ struct Grid {
 	size_y: usize,
 }
 
-struct ThreadedData<T>
-{
+struct ThreadedData<T> {
 	write_into: T,
 	y: usize,
 }

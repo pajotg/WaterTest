@@ -11,6 +11,9 @@ extern "C" {
 
 #include <chrono>
 #include <thread>
+#include "rust.hpp"
+
+using namespace std::chrono;
 
 void DoCell1DTest(const SimulationVariables& Variables)
 {
@@ -234,6 +237,50 @@ void DoCell2DTest(SimulationVariables& Variables)
 	mlx_terminate(mlx);
 }
 
+void Cell2DPerformanceTest(SimulationVariables& Variables)
+{
+	const int SIZEX = 1024;
+	const int SIZEY = 1024;
+
+	Cell2D* Cells = new Cell2D[SIZEX * SIZEY];
+
+	auto start = high_resolution_clock::now();
+
+	for (int i = 0; i < 100; i++)
+	{
+		Cell2D::UpdateCells(Variables, Cells, SIZEX, SIZEY);
+		std::cout << "Step " << i << " completed!" << std::endl;
+	}
+
+	auto stop = high_resolution_clock::now();
+
+	auto duration = duration_cast<milliseconds>(stop - start);
+	std::cout << "It took " << duration.count() << " ms!" << std::endl;
+}
+
+void rust_test()
+{
+	#ifdef RUST
+	print_stuff_in_rust();
+	RustSimulationVariables vars = new_simulation_variables();
+
+	RustWaterSimulator Simulator = new_simulation(vars, 1024, 1024);
+	std::cout << "dt: " << vars.dt << std::endl;
+
+	auto start = high_resolution_clock::now();
+	for (int i = 0; i < 100; i++)
+		step_simulation(Simulator.magic);
+	auto stop = high_resolution_clock::now();
+
+	auto duration = duration_cast<milliseconds>(stop - start);
+	std::cout << "It took " << duration.count() << " ms!" << std::endl;
+
+	#else
+	std::cout << "Rust not defined?" << std::endl;
+	throw "Cannot test rust without RUST define!";
+	#endif	
+}
+
 int main()
 {
 	std::srand(0);
@@ -248,7 +295,11 @@ int main()
 
 	//DoCell1DTest(Variables);
 
-	Variables.DT /= 2;
-	Variables.RAINFALL /= 20;
+	//Cell2DPerformanceTest(Variables);
+
+	//*
 	DoCell2DTest(Variables);
+	//*/
+
+	//rust_test();
 }

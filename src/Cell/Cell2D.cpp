@@ -96,7 +96,7 @@ struct CallRange
 
 template<class T>
 static void RunThreaded(const SimulationVariables& Variables, Cell2D* Ptr, int SizeX, int SizeY, int NumThreads, T Func)
-{
+{	
 	std::vector<CallRange<T>> Ranges;
 
 	for (int y = 1; y < SizeY - 1; y++)

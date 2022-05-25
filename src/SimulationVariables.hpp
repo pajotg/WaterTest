@@ -5,9 +5,9 @@
 #include <cmath>
 
 struct SimulationVariables {
-	float RAINFALL = 0.4f;
+	float RAINFALL = 0.02f;
 	float EVAPORATION = 0.025f;
-	float DT = 0.1f;
+	float DT = 0.05f;
 	float GRAVITY = 9.81f;
 	float PIPE_LENGTH = 1.0f;
 	float SEDIMENT_CAPACITY = 0.15f;

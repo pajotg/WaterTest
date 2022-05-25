@@ -12,3 +12,8 @@ CFLAGS += -Wno-newline-eof
 CFLAGS += -Wno-unused-variable -Wno-unused-function -Wno-unused-parameter
 
 LDFLAGS += -lglfw -L "/Users/$(USER)/.brew/opt/glfw/lib/" MLX42/libmlx42.a -L MLX42 
+
+ifdef RUST
+LDFLAGS += rust_export/target/release/librust_export.dylib
+CFLAGS += -D RUST
+endif
